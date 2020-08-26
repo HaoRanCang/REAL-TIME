@@ -7,6 +7,7 @@ public class Constant {
     public static final String START_LOG_TOPIC = "start_log_topic";
     public static final String EVENT_LOG_TOPIC = "event_log_topic";
     public static final String ORDER_INFO_TOPIC = "order_info_topic";
+    public static final String ORDER_DETAIL_TOPIC = "order_detail_topic";
 
 
 }

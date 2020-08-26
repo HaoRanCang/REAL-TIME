@@ -6,7 +6,7 @@ import org.apache.spark.streaming.kafka010.{ConsumerStrategies, KafkaUtils, Loca
 
 object MyKafkaUtil {
 
-  val kafkaParams = Map[String, Object](
+  var kafkaParams = Map[String, Object](
     "bootstrap.servers" -> "hadoop102:9092,hadoop103:9092, hadoop103:9092",
     "key.deserializer" -> classOf[StringDeserializer],
     "value.deserializer" -> classOf[StringDeserializer],
@@ -18,6 +18,14 @@ object MyKafkaUtil {
   )
 
   def getKafkaStreaming(ssc : StreamingContext, topic : String) = {
+    KafkaUtils.createDirectStream(ssc,
+      LocationStrategies.PreferConsistent,
+      ConsumerStrategies.Subscribe[String, String](Set(topic), kafkaParams)
+    ).map(_.value())
+  }
+
+  def getKafkaStreaming(ssc : StreamingContext, topic : String, groupId : String) = {
+    kafkaParams += "group.id" -> groupId
     KafkaUtils.createDirectStream(ssc,
       LocationStrategies.PreferConsistent,
       ConsumerStrategies.Subscribe[String, String](Set(topic), kafkaParams)

@@ -11,6 +11,7 @@ import com.atguigu.util.Constant
 import com.google.protobuf.ByteString
 
 import scala.collection.JavaConverters._
+import scala.util.Random
 
 object CanalClient {
 
@@ -29,18 +30,29 @@ object CanalClient {
    */
   def handleRowDatas(rowDatas: util.List[CanalEntry.RowData], tableName: String, eventType: CanalEntry.EventType) = {
     if(tableName == "order_info" && eventType == EventType.INSERT && rowDatas != null && !rowDatas.isEmpty) {
-      for (rowData <- rowDatas.asScala) {
-        val obj: JSONObject = new JSONObject()
-        // 所有的列
-        val columns: util.List[CanalEntry.Column] = rowData.getAfterColumnsList
-        for (column <- columns.asScala) {
-          val name: String = column.getName
-          val value: String = column.getValue
-          obj.put(name, value)
-        }
-        // println(obj.toJSONString)
-        sendToKafka(Constant.ORDER_INFO_TOPIC, obj.toJSONString)
+      handleRowData(rowDatas, Constant.ORDER_INFO_TOPIC)
+    } else if (tableName == "order_detail" && eventType == EventType.INSERT && rowDatas != null && !rowDatas.isEmpty) {
+      handleRowData(rowDatas, Constant.ORDER_DETAIL_TOPIC)
+    }
+  }
+
+  private def handleRowData(rowDatas: util.List[CanalEntry.RowData], topic : String) = {
+    for (rowData <- rowDatas.asScala) {
+      val obj: JSONObject = new JSONObject()
+      // 所有的列
+      val columns: util.List[CanalEntry.Column] = rowData.getAfterColumnsList
+      for (column <- columns.asScala) {
+        val name: String = column.getName
+        val value: String = column.getValue
+        obj.put(name, value)
       }
+      // println(obj.toJSONString)
+      new Thread() {
+        override def run(): Unit = {
+          Thread.sleep(new Random().nextInt(5 * 1000))
+          sendToKafka(topic, obj.toJSONString)
+        }
+      }.start()
     }
   }
 

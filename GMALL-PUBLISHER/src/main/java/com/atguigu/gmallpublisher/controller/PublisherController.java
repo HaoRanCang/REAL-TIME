@@ -1,12 +1,17 @@
 package com.atguigu.gmallpublisher.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.atguigu.gmallpublisher.bean.Option;
+import com.atguigu.gmallpublisher.bean.SaleInfo;
+import com.atguigu.gmallpublisher.bean.Stat;
 import com.atguigu.gmallpublisher.service.PublisherService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+import java.lang.reflect.Array;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,6 +75,58 @@ public class PublisherController {
             return JSON.toJSONString(result);
         }
         return "ok";
+    }
+
+    // http://localhost:8070/sale_detail?date=2019-05-20&&startpage=1&&size=5&&keyword=手机小米
+    @GetMapping("/sale_detail")
+    public String saleDetail(String date, int startpage, int size, String keyword) throws IOException {
+        Map<String, Object> saleDetailAndAgg = service.getSaleDetailAndAgg(date, keyword, startpage, size);
+        // 创建最终的结果
+        SaleInfo result = new SaleInfo();
+        // 1、设置total属性
+        Long total = (Long) saleDetailAndAgg.get("total");
+        result.setTotal(total);
+        // 2、设置详情
+        ArrayList<Map> details = (ArrayList<Map>)saleDetailAndAgg.get("details");
+        result.setDetail(details);
+        // 3、设置饼图
+        // 3.1 先设置性别的饼图
+        Map<String, Long> genderAgg = (Map<String, Long>)saleDetailAndAgg.get("genderAgg");
+        Stat genderStat = new Stat();
+        genderStat.setTitle("用户性别占比");
+        // genderAgg这个Map有多少键值时，饼图就有几部分
+        for (String key : genderAgg.keySet()) {
+            Option option = new Option();
+            option.setName(key.equals("F") ? "女" : "男");
+            option.setValue(genderAgg.get(key));
+            genderStat.addOption(option);
+        }
+        result.addStat(genderStat);
+        // 3.2 年龄饼图
+        Map<String, Long> ageAgg = (Map<String, Long>)saleDetailAndAgg.get("ageAgg");
+        Stat ageStat = new Stat();
+        ageStat.setTitle("用户年龄占比");
+        ageStat.addOption(new Option("20岁以下", 0L));
+        ageStat.addOption(new Option("20岁到30岁", 0L));
+        ageStat.addOption(new Option("30岁及以上", 0L));
+
+        for (Map.Entry<String, Long> entry : ageAgg.entrySet()) {
+            Integer age = Integer.parseInt(entry.getKey());
+            Long value = entry.getValue();
+            if (age < 20) {
+                Option opt = ageStat.getOptions().get(0);
+                opt.setValue(value + opt.getValue());
+            } else if(age < 30) {
+                Option opt = ageStat.getOptions().get(1);
+                opt.setValue(value + opt.getValue());
+            } else {
+                Option opt = ageStat.getOptions().get(2);
+                opt.setValue(value + opt.getValue());
+            }
+        }
+        result.addStat(ageStat);
+
+        return JSON.toJSONString(result);
     }
     private String getYesterday(String date) {
         return LocalDate.parse(date).minusDays(1).toString();
